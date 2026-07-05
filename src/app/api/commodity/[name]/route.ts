@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWheatData, getCoalData, getSoybeanData } from "@/lib/queries";
+import {
+  getWheatData,
+  getCoalData,
+  getSoybeanData,
+  getMaizeData,
+} from "@/lib/queries";
 
 export const dynamic = "force-dynamic"; // always fetch live, never cache
 
@@ -7,6 +12,7 @@ const HANDLERS: Record<string, () => Promise<unknown>> = {
   wheat: getWheatData,
   coal: getCoalData,
   soybean: getSoybeanData,
+  maize: getMaizeData,
 };
 
 export async function GET(

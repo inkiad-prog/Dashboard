@@ -186,3 +186,13 @@ export async function getSoybeanData(): Promise<CommodityData> {
   ]);
   return { yearly, monthlyPrice, countries, importers };
 }
+
+export async function getMaizeData(): Promise<CommodityData> {
+  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
+    getYearly("MAIZE/ CORN"),
+    getMonthlyPrice("MAIZE/ CORN", 100), // exclude tiny non-bulk shipments (e.g. pet food, unrelated goods) misclassified under this category
+    getTopCountries("MAIZE/ CORN"),
+    getTopImporters("MAIZE/ CORN", 100),
+  ]);
+  return { yearly, monthlyPrice, countries, importers };
+}

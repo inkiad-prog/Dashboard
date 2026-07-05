@@ -9,6 +9,7 @@ const TABS = [
   { key: "wheat", label: "Wheat", title: "Wheat Import Analysis" },
   { key: "coal", label: "Coal", title: "Coal Import Analysis" },
   { key: "soybean", label: "Soybean", title: "Soybean Import Analysis" },
+  { key: "maize", label: "Maize/Corn", title: "Maize/Corn Import Analysis" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -17,11 +18,13 @@ export default function DashboardClient({
   wheat,
   coal,
   soybean,
+  maize,
   generatedAt,
 }: {
   wheat: CommodityData;
   coal: CommodityData;
   soybean: CommodityData;
+  maize: CommodityData;
   generatedAt: string;
 }) {
   const [active, setActive] = useState<TabKey>("wheat");
@@ -80,6 +83,13 @@ export default function DashboardClient({
           commodityLabel="Soybean"
           data={soybean}
           priceNote="excludes non-bulk shipments under 100 MT (pharma/industrial imports misclassified under this category)"
+        />
+      )}
+      {active === "maize" && (
+        <CommodityTab
+          commodityLabel="Maize/Corn"
+          data={maize}
+          priceNote="excludes non-bulk shipments under 100 MT (e.g. pet food, unrelated goods misclassified under this category)"
         />
       )}
     </div>
