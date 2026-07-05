@@ -11,9 +11,10 @@ import {
 } from "@/lib/queries";
 import { COMMODITIES } from "@/lib/commodities";
 import OverviewCard, { OverviewCardData } from "@/components/OverviewCard";
+import RefreshButton from "@/components/RefreshButton";
 
-export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const dynamic = "force-static";
+export const revalidate = false;
 
 const FETCHERS: Record<string, () => Promise<CommodityData>> = {
   wheat: getWheatData,
@@ -64,11 +65,13 @@ export default async function OverviewPage() {
     <>
       <div className="overview-hero">
         <h1>Commodity Import Overview</h1>
-        <p>
-          Live snapshot across all tracked commodities, queried fresh from
-          dbo.tblImportData on every page load. Click any card to open its
-          full analysis — volume trend, price history, top countries, and top
-          importers.
+        <p style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span>
+            Snapshot across all tracked commodities, cached for speed. Click
+            Refresh to pull the latest from dbo.tblImportData, or click any
+            card to open its full analysis.
+          </span>
+          <RefreshButton />
         </p>
       </div>
       <div className="overview-grid">

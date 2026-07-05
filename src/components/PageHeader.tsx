@@ -1,24 +1,16 @@
-"use client";
-
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import RefreshButton from "./RefreshButton";
 
 export default function PageHeader({
   icon,
   title,
   category,
   accent,
-  generatedAt,
 }: {
   icon: string;
   title: string;
   category: string;
   accent: string;
-  generatedAt: string;
 }) {
-  const router = useRouter();
-  const [isRefreshing, startRefresh] = useTransition();
-
   return (
     <div className="page-header" style={{ ["--accent" as string]: `var(${accent})` }}>
       <div className="page-header-eyebrow">{category}</div>
@@ -31,15 +23,9 @@ export default function PageHeader({
       >
         <span>
           Source: dbo.tblImportData — Bangladesh customs bill-of-entry records.
-          Live query at page load ({generatedAt}).
+          Cached for speed — click Refresh to pull the latest data.
         </span>
-        <button
-          className="refresh-btn"
-          disabled={isRefreshing}
-          onClick={() => startRefresh(() => router.refresh())}
-        >
-          {isRefreshing ? "Refreshing…" : "↻ Refresh data"}
-        </button>
+        <RefreshButton />
       </div>
     </div>
   );

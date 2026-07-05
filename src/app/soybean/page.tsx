@@ -3,14 +3,12 @@ import { getCommodityBySlug } from "@/lib/commodities";
 import PageHeader from "@/components/PageHeader";
 import CommodityTab from "@/components/CommodityTab";
 
-export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const dynamic = "force-static";
+export const revalidate = false;
 
 export default async function SoybeanPage() {
   const meta = getCommodityBySlug("soybean")!;
   const data = await getSoybeanData();
-  const generatedAt = new Date().toISOString();
-
   return (
     <>
       <PageHeader
@@ -18,7 +16,6 @@ export default async function SoybeanPage() {
         title={meta.label}
         category={meta.category}
         accent={meta.accent}
-        generatedAt={generatedAt}
       />
       <div className="page-content">
         <CommodityTab
