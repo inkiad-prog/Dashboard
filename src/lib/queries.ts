@@ -59,6 +59,31 @@ export async function getMonthlyPrice(
   );
 }
 
+export interface DailyPriceRow {
+  Date: string; // yyyy-mm-dd
+  AvgPricePerMT: number | null;
+}
+
+// Grouped by the actual Bill Of Entry Date — one point per date that had at
+// least one cleared shipment (not a continuous daily feed; days with no
+// import activity simply have no row).
+export async function getDailyPrice(
+  category: string,
+  minQty = 0
+): Promise<DailyPriceRow[]> {
+  return query<DailyPriceRow>(
+    `
+    SELECT CONVERT(varchar, [Bill Of Entry Date], 23) AS Date,
+           SUM([Assessed Value (Tk.)]) / NULLIF(SUM([Quantity In MT]), 0) AS AvgPricePerMT
+    FROM dbo.tblImportData
+    WHERE [Product Category] = @category AND [Quantity In MT] >= @minQty
+    GROUP BY CONVERT(varchar, [Bill Of Entry Date], 23)
+    ORDER BY Date
+  `,
+    { category, minQty }
+  );
+}
+
 export async function getTopCountries(
   category: string,
   limit = 10
@@ -153,86 +178,60 @@ export async function getCoalMarketPrices(): Promise<CoalMarketPriceRow[]> {
 export interface CommodityData {
   yearly: YearlyRow[];
   monthlyPrice: MonthlyPriceRow[];
+  dailyPrice: DailyPriceRow[];
   countries: CountryRow[];
   importers: ImporterRow[];
 }
 
+async function getCommodityData(
+  category: string,
+  minQty = 0
+): Promise<CommodityData> {
+  const [yearly, monthlyPrice, dailyPrice, countries, importers] =
+    await Promise.all([
+      getYearly(category),
+      getMonthlyPrice(category, minQty),
+      getDailyPrice(category, minQty),
+      getTopCountries(category),
+      getTopImporters(category, minQty),
+    ]);
+  return { yearly, monthlyPrice, dailyPrice, countries, importers };
+}
+
 export async function getWheatData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("WHEAT"),
-    getMonthlyPrice("WHEAT"),
-    getTopCountries("WHEAT"),
-    getTopImporters("WHEAT"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  return getCommodityData("WHEAT");
 }
 
 export async function getCoalData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("COAL"),
-    getMonthlyPrice("COAL"),
-    getTopCountries("COAL"),
-    getTopImporters("COAL"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  return getCommodityData("COAL");
 }
 
 export async function getSoybeanData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("SOYABEAN"),
-    getMonthlyPrice("SOYABEAN", 100), // exclude non-bulk pharma/industrial misclassified rows
-    getTopCountries("SOYABEAN"),
-    getTopImporters("SOYABEAN", 100),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // exclude non-bulk pharma/industrial misclassified rows
+  return getCommodityData("SOYABEAN", 100);
 }
 
 export async function getMaizeData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("MAIZE/ CORN"),
-    getMonthlyPrice("MAIZE/ CORN", 100), // exclude tiny non-bulk shipments (e.g. pet food, unrelated goods) misclassified under this category
-    getTopCountries("MAIZE/ CORN"),
-    getTopImporters("MAIZE/ CORN", 100),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // exclude tiny non-bulk shipments (e.g. pet food, unrelated goods) misclassified under this category
+  return getCommodityData("MAIZE/ CORN", 100);
 }
 
 export async function getYellowPeasData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("YELLOW PEAS"),
-    getMonthlyPrice("YELLOW PEAS"), // no filter — see priceNote: Apr-Aug 2024 has a known customs valuation anomaly, kept as-is
-    getTopCountries("YELLOW PEAS"),
-    getTopImporters("YELLOW PEAS"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // no filter — see priceNote: Apr-Aug 2024 has a known customs valuation anomaly, kept as-is
+  return getCommodityData("YELLOW PEAS");
 }
 
 export async function getChickpeasData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("CHICKPEAS"),
-    getMonthlyPrice("CHICKPEAS"), // no filter — small-quantity shipments are legitimate trading companies, sustained 2022-2025 price rise matches real global chickpea market shortage
-    getTopCountries("CHICKPEAS"),
-    getTopImporters("CHICKPEAS"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // no filter — small-quantity shipments are legitimate trading companies, sustained 2022-2025 price rise matches real global chickpea market shortage
+  return getCommodityData("CHICKPEAS");
 }
 
 export async function getCanolaSeedData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("CANOLA SEED"),
-    getMonthlyPrice("CANOLA SEED"), // no filter — small-quantity share is only 8% of rows with a modest ~12% price difference, no contamination pattern
-    getTopCountries("CANOLA SEED"),
-    getTopImporters("CANOLA SEED"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // no filter — small-quantity share is only 8% of rows with a modest ~12% price difference, no contamination pattern
+  return getCommodityData("CANOLA SEED");
 }
 
 export async function getLentilData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("LENTIL"),
-    getMonthlyPrice("LENTIL"), // no filter — small-quantity share is legitimate dal/pulse trading companies (same names as Chickpeas/Yellow Peas), no contamination pattern
-    getTopCountries("LENTIL"),
-    getTopImporters("LENTIL"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // no filter — small-quantity share is legitimate dal/pulse trading companies (same names as Chickpeas/Yellow Peas), no contamination pattern
+  return getCommodityData("LENTIL");
 }

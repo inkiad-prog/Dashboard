@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 export interface PricePoint {
-  label: string; // e.g. "2024-06"
+  label: string; // "YYYY-MM" (monthly) or "YYYY-MM-DD" (daily)
   price: number;
 }
 
@@ -17,8 +17,8 @@ export default function PriceLineChart({ data }: { data: PricePoint[] }) {
   const plotW = W - padL - padR,
     plotH = H - padT - padB;
   const values = data.map((d) => d.price);
-  const maxV = Math.max(...values) * 1.08;
-  const minV = Math.min(...values) * 0.92;
+  const maxV = data.length ? Math.max(...values) * 1.08 : 1;
+  const minV = data.length ? Math.min(...values) * 0.92 : 0;
   const n = data.length;
   const [hover, setHover] = useState<number | null>(null);
 
@@ -34,10 +34,23 @@ export default function PriceLineChart({ data }: { data: PricePoint[] }) {
     .map((d, i) => `${i === 0 ? "M" : "L"}${xPos(i)},${yPos(d.price)}`)
     .join(" ");
 
-  // thin year labels shown at Jan of each year
-  const yearLabels = data
-    .map((d, i) => ({ ...d, i }))
-    .filter((d) => d.label.endsWith("-01"));
+  // Dynamically thin x-axis labels to whatever the plot width allows,
+  // works whether labels are monthly ("YYYY-MM") or daily ("YYYY-MM-DD").
+  const marks: { text: string; i: number }[] = [];
+  let lastKey = "";
+  data.forEach((d, i) => {
+    const key = data[0]?.label.length > 7 ? d.label : d.label.slice(0, 7); // group by month if daily
+    if (key !== lastKey) {
+      lastKey = key;
+      marks.push({ text: d.label.length > 7 ? d.label.slice(0, 7) : d.label, i });
+    }
+  });
+  const minLabelGapPx = 62;
+  const maxLabels = Math.max(1, Math.floor(plotW / minLabelGapPx));
+  const step = Math.max(1, Math.ceil(marks.length / maxLabels));
+  const shownMarks = marks.filter((_, idx) => idx % step === 0);
+
+  const colW = n > 1 ? plotW / n : plotW;
 
   return (
     <div style={{ position: "relative" }}>
@@ -72,31 +85,42 @@ export default function PriceLineChart({ data }: { data: PricePoint[] }) {
           y2={padT + plotH}
           className="axis-line"
         />
-        {yearLabels.map((d) => (
+        {shownMarks.map((m) => (
           <text
-            key={d.label}
-            x={xPos(d.i)}
+            key={m.i}
+            x={xPos(m.i)}
             y={padT + plotH + 20}
             textAnchor="middle"
           >
-            {d.label.slice(0, 4)}
+            {m.text}
           </text>
         ))}
         <path d={path} fill="none" stroke="var(--series-1)" strokeWidth={2} />
+        {n <= 80 &&
+          data.map((d, i) => (
+            <circle
+              key={d.label}
+              cx={xPos(i)}
+              cy={yPos(d.price)}
+              r={3}
+              fill="var(--series-1)"
+            />
+          ))}
         {data.map((d, i) => (
-          <circle
+          <rect
             key={d.label}
-            cx={xPos(i)}
-            cy={yPos(d.price)}
-            r={7}
+            x={xPos(i) - colW / 2}
+            y={padT}
+            width={colW}
+            height={plotH}
             fill="transparent"
-            style={{ cursor: "pointer" }}
+            style={{ cursor: "crosshair" }}
             onMouseEnter={() => setHover(i)}
             onMouseLeave={() => setHover(null)}
           />
         ))}
       </svg>
-      {hover !== null && (
+      {hover !== null && data[hover] && (
         <div
           className="tooltip"
           style={{
