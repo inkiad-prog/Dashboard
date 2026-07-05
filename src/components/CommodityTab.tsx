@@ -2,7 +2,7 @@
 
 import { CommodityData } from "@/lib/queries";
 import YearlyBarChart from "./charts/YearlyBarChart";
-import PriceRangeChart from "./charts/PriceRangeChart";
+import PriceLineChart from "./charts/PriceLineChart";
 import HBarList from "./charts/HBarList";
 import StatRow, { Stat } from "./StatRow";
 
@@ -110,14 +110,13 @@ export default function CommodityTab({
       </div>
 
       <div className="panel">
-        <div className="panel-title">Average unit price — {commodityLabel}</div>
+        <div className="panel-title">Monthly average unit price — {commodityLabel}</div>
         <div className="panel-sub">
-          Assessed value ÷ quantity (Tk. per metric ton), one point per date
-          that had a cleared shipment — not every calendar day has activity
-          {priceNote ? `. ${priceNote}` : ""}
+          Assessed value ÷ quantity (Tk. per metric ton)
+          {priceNote ? ` — ${priceNote}` : ""}
         </div>
-        {data.dailyPrice.length > 0 ? (
-          <PriceRangeChart dailyPrice={data.dailyPrice} />
+        {priceSeries.length > 0 ? (
+          <PriceLineChart data={priceSeries} />
         ) : (
           <p style={{ color: "var(--text-secondary)" }}>No price data available.</p>
         )}
