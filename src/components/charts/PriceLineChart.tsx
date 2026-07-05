@@ -7,7 +7,13 @@ export interface PricePoint {
   price: number;
 }
 
-export default function PriceLineChart({ data }: { data: PricePoint[] }) {
+export default function PriceLineChart({
+  data,
+  color = "var(--series-1)",
+}: {
+  data: PricePoint[];
+  color?: string;
+}) {
   const W = 1160,
     H = 260,
     padL = 55,
@@ -21,6 +27,7 @@ export default function PriceLineChart({ data }: { data: PricePoint[] }) {
   const minV = Math.min(...values) * 0.92;
   const n = data.length;
   const [hover, setHover] = useState<number | null>(null);
+  const gradId = "priceAreaGrad";
 
   function xPos(i: number) {
     return n > 1 ? padL + (i / (n - 1)) * plotW : padL + plotW / 2;
@@ -33,6 +40,10 @@ export default function PriceLineChart({ data }: { data: PricePoint[] }) {
   const path = data
     .map((d, i) => `${i === 0 ? "M" : "L"}${xPos(i)},${yPos(d.price)}`)
     .join(" ");
+  const areaPath =
+    data.length > 0
+      ? `${path} L${xPos(n - 1)},${padT + plotH} L${xPos(0)},${padT + plotH} Z`
+      : "";
 
   // thin year labels shown at Jan of each year
   const yearLabels = data
@@ -47,6 +58,12 @@ export default function PriceLineChart({ data }: { data: PricePoint[] }) {
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="xMinYMin meet"
       >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
         {Array.from({ length: ticks + 1 }).map((_, i) => {
           const val = minV + ((maxV - minV) / ticks) * i;
           const y = padT + plotH - (i / ticks) * plotH;
@@ -82,7 +99,11 @@ export default function PriceLineChart({ data }: { data: PricePoint[] }) {
             {d.label.slice(0, 4)}
           </text>
         ))}
-        <path d={path} fill="none" stroke="var(--series-1)" strokeWidth={2} />
+        {areaPath && <path d={areaPath} fill={`url(#${gradId})`} stroke="none" />}
+        <path d={path} fill="none" stroke={color} strokeWidth={2.25} strokeLinejoin="round" />
+        {hover !== null && (
+          <circle cx={xPos(hover)} cy={yPos(data[hover].price)} r={4.5} fill={color} stroke="var(--surface-1)" strokeWidth={2} />
+        )}
         {data.map((d, i) => (
           <circle
             key={d.label}

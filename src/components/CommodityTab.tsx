@@ -32,11 +32,14 @@ export default function CommodityTab({
   commodityLabel,
   data,
   priceNote,
+  accent = "--cat-grains",
 }: {
   commodityLabel: string;
   data: CommodityData;
   priceNote?: string;
+  accent?: string;
 }) {
+  const accentVar = `var(${accent})`;
   const yearly = data.yearly.map((d) => ({ year: d.Year, mt: d.TotalMT }));
   const totalMT = yearly.reduce((s, d) => s + d.mt, 0);
   const totalVal = data.yearly.reduce((s, d) => s + d.TotalValueTK, 0);
@@ -50,6 +53,7 @@ export default function CommodityTab({
     latestRow && prevRow && prevRow.TotalMT > 0
       ? (((latestRow.TotalMT - prevRow.TotalMT) / prevRow.TotalMT) * 100).toFixed(1)
       : "0.0";
+  const yoyPositive = Number(yoy) > 0;
 
   const priceSeries = data.monthlyPrice
     .filter((p) => p.AvgPricePerMT != null)
@@ -79,8 +83,9 @@ export default function CommodityTab({
     },
     {
       label: `Volume YoY (${prevYear}→${latestYear})`,
-      value: (Number(yoy) > 0 ? "+" : "") + yoy + "%",
-      sub: Number(yoy) > 0 ? "Growth" : "Decline",
+      value: (yoyPositive ? "+" : "") + yoy + "%",
+      sub: yoyPositive ? "Growth" : "Decline",
+      subClass: yoyPositive ? "good" : "bad",
     },
     {
       label: "Peak Avg. Price / MT",
@@ -97,7 +102,7 @@ export default function CommodityTab({
   ];
 
   return (
-    <div>
+    <div style={{ ["--accent" as string]: accentVar }}>
       <StatRow stats={stats} />
 
       <div className="panel">
@@ -106,7 +111,7 @@ export default function CommodityTab({
           {commodityLabel} — metric tons imported per year (live from data
           warehouse)
         </div>
-        <YearlyBarChart data={yearly} />
+        <YearlyBarChart data={yearly} color={accentVar} />
       </div>
 
       <div className="panel">
@@ -116,7 +121,7 @@ export default function CommodityTab({
           {priceNote ? ` — ${priceNote}` : ""}
         </div>
         {priceSeries.length > 0 ? (
-          <PriceLineChart data={priceSeries} />
+          <PriceLineChart data={priceSeries} color={accentVar} />
         ) : (
           <p style={{ color: "var(--text-secondary)" }}>No price data available.</p>
         )}
@@ -128,7 +133,7 @@ export default function CommodityTab({
           <div className="panel-sub">Ranked by total metric tons imported</div>
           <HBarList
             data={data.countries.map((c) => ({ name: c.Origin, mt: c.TotalMT }))}
-            colorVar="var(--series-1)"
+            colorVar={accentVar}
           />
         </div>
         <div className="panel">

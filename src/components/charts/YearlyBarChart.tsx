@@ -5,7 +5,13 @@ export interface YearlyDatum {
   mt: number;
 }
 
-export default function YearlyBarChart({ data }: { data: YearlyDatum[] }) {
+export default function YearlyBarChart({
+  data,
+  color = "var(--series-1)",
+}: {
+  data: YearlyDatum[];
+  color?: string;
+}) {
   const W = 1160,
     H = 280,
     padL = 60,
@@ -19,6 +25,7 @@ export default function YearlyBarChart({ data }: { data: YearlyDatum[] }) {
   const groupW = plotW / n;
   const barW = groupW * 0.45;
   const ticks = 5;
+  const gradId = "barGrad";
 
   return (
     <svg
@@ -27,6 +34,12 @@ export default function YearlyBarChart({ data }: { data: YearlyDatum[] }) {
       viewBox={`0 0 ${W} ${H}`}
       preserveAspectRatio="xMinYMin meet"
     >
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="1" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.55" />
+        </linearGradient>
+      </defs>
       {Array.from({ length: ticks + 1 }).map((_, i) => {
         const val = (maxMT / ticks) * i;
         const y = padT + plotH - (val / maxMT) * plotH;
@@ -64,8 +77,8 @@ export default function YearlyBarChart({ data }: { data: YearlyDatum[] }) {
               y={y}
               width={barW}
               height={h}
-              rx={3}
-              fill="var(--series-1)"
+              rx={4}
+              fill={`url(#${gradId})`}
             />
             <text
               x={gx}
