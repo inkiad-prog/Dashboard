@@ -196,3 +196,13 @@ export async function getMaizeData(): Promise<CommodityData> {
   ]);
   return { yearly, monthlyPrice, countries, importers };
 }
+
+export async function getYellowPeasData(): Promise<CommodityData> {
+  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
+    getYearly("YELLOW PEAS"),
+    getMonthlyPrice("YELLOW PEAS"), // no filter — see priceNote: Apr-Aug 2024 has a known customs valuation anomaly, kept as-is
+    getTopCountries("YELLOW PEAS"),
+    getTopImporters("YELLOW PEAS"),
+  ]);
+  return { yearly, monthlyPrice, countries, importers };
+}

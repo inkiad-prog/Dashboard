@@ -10,6 +10,7 @@ const TABS = [
   { key: "coal", label: "Coal", title: "Coal Import Analysis" },
   { key: "soybean", label: "Soybean", title: "Soybean Import Analysis" },
   { key: "maize", label: "Maize/Corn", title: "Maize/Corn Import Analysis" },
+  { key: "yellowPeas", label: "Yellow Peas", title: "Yellow Peas Import Analysis" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -19,12 +20,14 @@ export default function DashboardClient({
   coal,
   soybean,
   maize,
+  yellowPeas,
   generatedAt,
 }: {
   wheat: CommodityData;
   coal: CommodityData;
   soybean: CommodityData;
   maize: CommodityData;
+  yellowPeas: CommodityData;
   generatedAt: string;
 }) {
   const [active, setActive] = useState<TabKey>("wheat");
@@ -90,6 +93,13 @@ export default function DashboardClient({
           commodityLabel="Maize/Corn"
           data={maize}
           priceNote="excludes non-bulk shipments under 100 MT (e.g. pet food, unrelated goods misclassified under this category)"
+        />
+      )}
+      {active === "yellowPeas" && (
+        <CommodityTab
+          commodityLabel="Yellow Peas"
+          data={yellowPeas}
+          priceNote="Apr-Aug 2024 shows an unexplained ~3x price spike (Tk. 150-160K/MT vs. a normal ~45-60K range) consistent across many unrelated importers — likely a customs reference-valuation anomaly for that period rather than a data error, kept as-is but flagged"
         />
       )}
     </div>
