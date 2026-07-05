@@ -6,13 +6,14 @@ import {
   getYellowPeasData,
   getChickpeasData,
   getCanolaSeedData,
+  getLentilData,
 } from "@/lib/queries";
 import DashboardClient from "@/components/DashboardClient";
 
 export const dynamic = "force-dynamic"; // never cache — always query the DW live
 
 export default async function Home() {
-  const [wheat, coal, soybean, maize, yellowPeas, chickpeas, canolaSeed] =
+  const [wheat, coal, soybean, maize, yellowPeas, chickpeas, canolaSeed, lentil] =
     await Promise.all([
       getWheatData(),
       getCoalData(),
@@ -21,6 +22,7 @@ export default async function Home() {
       getYellowPeasData(),
       getChickpeasData(),
       getCanolaSeedData(),
+      getLentilData(),
     ]);
 
   const generatedAt = new Date().toISOString();
@@ -34,6 +36,7 @@ export default async function Home() {
       yellowPeas={yellowPeas}
       chickpeas={chickpeas}
       canolaSeed={canolaSeed}
+      lentil={lentil}
       generatedAt={generatedAt}
     />
   );

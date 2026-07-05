@@ -226,3 +226,13 @@ export async function getCanolaSeedData(): Promise<CommodityData> {
   ]);
   return { yearly, monthlyPrice, countries, importers };
 }
+
+export async function getLentilData(): Promise<CommodityData> {
+  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
+    getYearly("LENTIL"),
+    getMonthlyPrice("LENTIL"), // no filter — small-quantity share is legitimate dal/pulse trading companies (same names as Chickpeas/Yellow Peas), no contamination pattern
+    getTopCountries("LENTIL"),
+    getTopImporters("LENTIL"),
+  ]);
+  return { yearly, monthlyPrice, countries, importers };
+}
