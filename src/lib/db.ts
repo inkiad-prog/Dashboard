@@ -54,3 +54,23 @@ export async function query<T = Record<string, unknown>>(
   const result = await request.query(queryString);
   return result.recordset as T[];
 }
+
+// Runs several SELECT statements as one batch over a single round trip —
+// important here because the DW server is a cross-region connection, so
+// every extra round trip adds real latency. Returns one recordset per
+// statement, in order.
+export async function queryMulti(
+  queryString: string,
+  params?: Record<string, sql.ISqlTypeFactory | string | number>
+): Promise<unknown[][]> {
+  const pool = await getPool();
+  const request = pool.request();
+  request.multiple = true;
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      request.input(key, value);
+    }
+  }
+  const result = await request.query(queryString);
+  return (result.recordsets as unknown as unknown[][]) ?? [];
+}

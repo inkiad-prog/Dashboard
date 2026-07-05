@@ -13,6 +13,7 @@ import { COMMODITIES } from "@/lib/commodities";
 import OverviewCard, { OverviewCardData } from "@/components/OverviewCard";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const FETCHERS: Record<string, () => Promise<CommodityData>> = {
   wheat: getWheatData,

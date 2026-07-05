@@ -4,6 +4,7 @@ import PageHeader from "@/components/PageHeader";
 import CommodityTab from "@/components/CommodityTab";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export default async function WheatPage() {
   const meta = getCommodityBySlug("wheat")!;

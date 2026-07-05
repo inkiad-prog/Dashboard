@@ -1,4 +1,4 @@
-import { query } from "./db";
+import { query, queryMulti } from "./db";
 
 export interface YearlyRow {
   Year: string;
@@ -26,75 +26,6 @@ const MONTH_ORDER = `CASE Month
   WHEN 'January' THEN 1 WHEN 'February' THEN 2 WHEN 'March' THEN 3 WHEN 'April' THEN 4
   WHEN 'May' THEN 5 WHEN 'June' THEN 6 WHEN 'July' THEN 7 WHEN 'August' THEN 8
   WHEN 'September' THEN 9 WHEN 'October' THEN 10 WHEN 'November' THEN 11 WHEN 'December' THEN 12 END`;
-
-export async function getYearly(category: string): Promise<YearlyRow[]> {
-  return query<YearlyRow>(
-    `
-    SELECT CAST(Year AS varchar) AS Year,
-           SUM([Quantity In MT]) AS TotalMT,
-           SUM([Assessed Value (Tk.)]) AS TotalValueTK
-    FROM dbo.tblImportData
-    WHERE [Product Category] = @category
-    GROUP BY Year
-    ORDER BY Year
-  `,
-    { category }
-  );
-}
-
-export async function getMonthlyPrice(
-  category: string,
-  minQty = 0
-): Promise<MonthlyPriceRow[]> {
-  return query<MonthlyPriceRow>(
-    `
-    SELECT Year, Month,
-           SUM([Assessed Value (Tk.)]) / NULLIF(SUM([Quantity In MT]), 0) AS AvgPricePerMT
-    FROM dbo.tblImportData
-    WHERE [Product Category] = @category AND [Quantity In MT] >= @minQty
-    GROUP BY Year, Month
-    ORDER BY Year, ${MONTH_ORDER}
-  `,
-    { category, minQty }
-  );
-}
-
-export async function getTopCountries(
-  category: string,
-  limit = 10
-): Promise<CountryRow[]> {
-  return query<CountryRow>(
-    `
-    SELECT TOP (@limit) Origin, SUM([Quantity In MT]) AS TotalMT
-    FROM dbo.tblImportData
-    WHERE [Product Category] = @category
-    GROUP BY Origin
-    ORDER BY TotalMT DESC
-  `,
-    { category, limit }
-  );
-}
-
-export async function getTopImporters(
-  category: string,
-  minQty = 0,
-  limit = 8
-): Promise<ImporterRow[]> {
-  const rows = await query<{ "Importer Name_Clean": string; TotalMT: number }>(
-    `
-    SELECT TOP (@limit) [Importer Name_Clean], SUM([Quantity In MT]) AS TotalMT
-    FROM dbo.tblImportData
-    WHERE [Product Category] = @category AND [Quantity In MT] >= @minQty
-    GROUP BY [Importer Name_Clean]
-    ORDER BY TotalMT DESC
-  `,
-    { category, minQty, limit }
-  );
-  return rows.map((r) => ({
-    ImporterName: r["Importer Name_Clean"],
-    TotalMT: r.TotalMT,
-  }));
-}
 
 export interface WheatMarketPriceRow {
   AssessDate: string;
@@ -157,82 +88,97 @@ export interface CommodityData {
   importers: ImporterRow[];
 }
 
-export async function getWheatData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("WHEAT"),
-    getMonthlyPrice("WHEAT"),
-    getTopCountries("WHEAT"),
-    getTopImporters("WHEAT"),
-  ]);
+// Runs all 4 queries for a commodity as ONE batched round trip instead of 4
+// separate ones. The DW server is a cross-region connection, so cutting
+// round trips matters a lot more here than it would for a local database —
+// this was a real contributor to pages feeling slow / occasionally timing
+// out under load.
+async function getCommodityData(
+  category: string,
+  minQty = 0,
+  importerLimit = 8
+): Promise<CommodityData> {
+  const recordsets = await queryMulti(
+    `
+    SELECT CAST(Year AS varchar) AS Year,
+           SUM([Quantity In MT]) AS TotalMT,
+           SUM([Assessed Value (Tk.)]) AS TotalValueTK
+    FROM dbo.tblImportData
+    WHERE [Product Category] = @category
+    GROUP BY Year
+    ORDER BY Year;
+
+    SELECT Year, Month,
+           SUM([Assessed Value (Tk.)]) / NULLIF(SUM([Quantity In MT]), 0) AS AvgPricePerMT
+    FROM dbo.tblImportData
+    WHERE [Product Category] = @category AND [Quantity In MT] >= @minQty
+    GROUP BY Year, Month
+    ORDER BY Year, ${MONTH_ORDER};
+
+    SELECT TOP (10) Origin, SUM([Quantity In MT]) AS TotalMT
+    FROM dbo.tblImportData
+    WHERE [Product Category] = @category
+    GROUP BY Origin
+    ORDER BY TotalMT DESC;
+
+    SELECT TOP (@importerLimit) [Importer Name_Clean], SUM([Quantity In MT]) AS TotalMT
+    FROM dbo.tblImportData
+    WHERE [Product Category] = @category AND [Quantity In MT] >= @minQty
+    GROUP BY [Importer Name_Clean]
+    ORDER BY TotalMT DESC;
+    `,
+    { category, minQty, importerLimit }
+  );
+
+  const [yearly, monthlyPrice, countries, importersRaw] = recordsets as [
+    YearlyRow[],
+    MonthlyPriceRow[],
+    CountryRow[],
+    { "Importer Name_Clean": string; TotalMT: number }[],
+  ];
+
+  const importers: ImporterRow[] = importersRaw.map((r) => ({
+    ImporterName: r["Importer Name_Clean"],
+    TotalMT: r.TotalMT,
+  }));
+
   return { yearly, monthlyPrice, countries, importers };
+}
+
+export async function getWheatData(): Promise<CommodityData> {
+  return getCommodityData("WHEAT");
 }
 
 export async function getCoalData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("COAL"),
-    getMonthlyPrice("COAL"),
-    getTopCountries("COAL"),
-    getTopImporters("COAL"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  return getCommodityData("COAL");
 }
 
 export async function getSoybeanData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("SOYABEAN"),
-    getMonthlyPrice("SOYABEAN", 100), // exclude non-bulk pharma/industrial misclassified rows
-    getTopCountries("SOYABEAN"),
-    getTopImporters("SOYABEAN", 100),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // exclude non-bulk pharma/industrial misclassified rows
+  return getCommodityData("SOYABEAN", 100);
 }
 
 export async function getMaizeData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("MAIZE/ CORN"),
-    getMonthlyPrice("MAIZE/ CORN", 100), // exclude tiny non-bulk shipments (e.g. pet food, unrelated goods) misclassified under this category
-    getTopCountries("MAIZE/ CORN"),
-    getTopImporters("MAIZE/ CORN", 100),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // exclude tiny non-bulk shipments (e.g. pet food, unrelated goods) misclassified under this category
+  return getCommodityData("MAIZE/ CORN", 100);
 }
 
 export async function getYellowPeasData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("YELLOW PEAS"),
-    getMonthlyPrice("YELLOW PEAS"), // no filter — see priceNote: Apr-Aug 2024 has a known customs valuation anomaly, kept as-is
-    getTopCountries("YELLOW PEAS"),
-    getTopImporters("YELLOW PEAS"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // no filter — see priceNote: Apr-Aug 2024 has a known customs valuation anomaly, kept as-is
+  return getCommodityData("YELLOW PEAS");
 }
 
 export async function getChickpeasData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("CHICKPEAS"),
-    getMonthlyPrice("CHICKPEAS"), // no filter — small-quantity shipments are legitimate trading companies, sustained 2022-2025 price rise matches real global chickpea market shortage
-    getTopCountries("CHICKPEAS"),
-    getTopImporters("CHICKPEAS"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // no filter — small-quantity shipments are legitimate trading companies, sustained 2022-2025 price rise matches real global chickpea market shortage
+  return getCommodityData("CHICKPEAS");
 }
 
 export async function getCanolaSeedData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("CANOLA SEED"),
-    getMonthlyPrice("CANOLA SEED"), // no filter — small-quantity share is only 8% of rows with a modest ~12% price difference, no contamination pattern
-    getTopCountries("CANOLA SEED"),
-    getTopImporters("CANOLA SEED"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // no filter — small-quantity share is only 8% of rows with a modest ~12% price difference, no contamination pattern
+  return getCommodityData("CANOLA SEED");
 }
 
 export async function getLentilData(): Promise<CommodityData> {
-  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
-    getYearly("LENTIL"),
-    getMonthlyPrice("LENTIL"), // no filter — small-quantity share is legitimate dal/pulse trading companies (same names as Chickpeas/Yellow Peas), no contamination pattern
-    getTopCountries("LENTIL"),
-    getTopImporters("LENTIL"),
-  ]);
-  return { yearly, monthlyPrice, countries, importers };
+  // no filter — small-quantity share is legitimate dal/pulse trading companies (same names as Chickpeas/Yellow Peas), no contamination pattern
+  return getCommodityData("LENTIL");
 }
