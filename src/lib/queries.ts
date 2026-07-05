@@ -206,3 +206,13 @@ export async function getYellowPeasData(): Promise<CommodityData> {
   ]);
   return { yearly, monthlyPrice, countries, importers };
 }
+
+export async function getChickpeasData(): Promise<CommodityData> {
+  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
+    getYearly("CHICKPEAS"),
+    getMonthlyPrice("CHICKPEAS"), // no filter — small-quantity shipments are legitimate trading companies, sustained 2022-2025 price rise matches real global chickpea market shortage
+    getTopCountries("CHICKPEAS"),
+    getTopImporters("CHICKPEAS"),
+  ]);
+  return { yearly, monthlyPrice, countries, importers };
+}
