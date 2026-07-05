@@ -12,6 +12,7 @@ const TABS = [
   { key: "maize", label: "Maize/Corn", title: "Maize/Corn Import Analysis" },
   { key: "yellowPeas", label: "Yellow Peas", title: "Yellow Peas Import Analysis" },
   { key: "chickpeas", label: "Chickpeas", title: "Chickpeas Import Analysis" },
+  { key: "canolaSeed", label: "Canola Seed", title: "Canola Seed Import Analysis" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -23,6 +24,7 @@ export default function DashboardClient({
   maize,
   yellowPeas,
   chickpeas,
+  canolaSeed,
   generatedAt,
 }: {
   wheat: CommodityData;
@@ -31,6 +33,7 @@ export default function DashboardClient({
   maize: CommodityData;
   yellowPeas: CommodityData;
   chickpeas: CommodityData;
+  canolaSeed: CommodityData;
   generatedAt: string;
 }) {
   const [active, setActive] = useState<TabKey>("wheat");
@@ -107,6 +110,9 @@ export default function DashboardClient({
       )}
       {active === "chickpeas" && (
         <CommodityTab commodityLabel="Chickpeas" data={chickpeas} />
+      )}
+      {active === "canolaSeed" && (
+        <CommodityTab commodityLabel="Canola Seed" data={canolaSeed} />
       )}
     </div>
   );

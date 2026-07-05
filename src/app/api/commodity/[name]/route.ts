@@ -6,6 +6,7 @@ import {
   getMaizeData,
   getYellowPeasData,
   getChickpeasData,
+  getCanolaSeedData,
 } from "@/lib/queries";
 
 export const dynamic = "force-dynamic"; // always fetch live, never cache
@@ -17,6 +18,7 @@ const HANDLERS: Record<string, () => Promise<unknown>> = {
   maize: getMaizeData,
   yellowpeas: getYellowPeasData,
   chickpeas: getChickpeasData,
+  canolaseed: getCanolaSeedData,
 };
 
 export async function GET(

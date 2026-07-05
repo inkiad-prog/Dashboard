@@ -216,3 +216,13 @@ export async function getChickpeasData(): Promise<CommodityData> {
   ]);
   return { yearly, monthlyPrice, countries, importers };
 }
+
+export async function getCanolaSeedData(): Promise<CommodityData> {
+  const [yearly, monthlyPrice, countries, importers] = await Promise.all([
+    getYearly("CANOLA SEED"),
+    getMonthlyPrice("CANOLA SEED"), // no filter — small-quantity share is only 8% of rows with a modest ~12% price difference, no contamination pattern
+    getTopCountries("CANOLA SEED"),
+    getTopImporters("CANOLA SEED"),
+  ]);
+  return { yearly, monthlyPrice, countries, importers };
+}
