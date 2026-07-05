@@ -14,10 +14,16 @@ const config: sql.config = {
     trustServerCertificate: true,
   },
   pool: {
-    max: 5,
+    // Each page load fires up to 5 concurrent queries (Promise.all in
+    // getCommodityData), and Next.js prefetches every visible sidebar link
+    // in the background — so this needs headroom for several pages'
+    // worth of concurrent queries, not just one.
+    max: 20,
     min: 0,
     idleTimeoutMillis: 30000,
   },
+  connectionTimeout: 15000,
+  requestTimeout: 30000,
 };
 
 let poolPromise: Promise<sql.ConnectionPool> | null = null;

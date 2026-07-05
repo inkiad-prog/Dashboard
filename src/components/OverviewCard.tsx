@@ -25,6 +25,7 @@ export default function OverviewCard({
   return (
     <Link
       href={`/${meta.slug}`}
+      prefetch={false}
       className="commodity-card"
       style={{
         ["--accent" as string]: `var(${meta.accent})`,
